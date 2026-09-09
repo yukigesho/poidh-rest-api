@@ -19,6 +19,7 @@ pnpm start
 | --- | --- |
 | `DATABASE_URL` | PostgreSQL connection string; the API reads the `public` schema |
 | `PORT` | HTTP port (defaults to `42070`) |
+| `REDIS_URL` | Redis connection string (e.g. `redis://localhost:6379/0`); caching is disabled when omitted |
 
 For local development with automatic restarts:
 
@@ -26,7 +27,21 @@ For local development with automatic restarts:
 pnpm dev
 ```
 
-Run `pnpm typecheck` to check TypeScript.
+Run `pnpm typecheck` to check TypeScript and `pnpm test` to run cache tests.
+
+## Redis cache
+
+Set `REDIS_URL` to enable server-side caching of successful JSON GET responses on all data endpoints, including legacy routes. Each full request URL (including filters, pagination, and relations) has a separate cache entry with a fixed **24-hour TTL (86,400 seconds)**. Cache hits do not extend the TTL or query PostgreSQL. Errors, health/readiness checks, and API documentation are not cached.
+
+Data can be up to 24 hours stale, including live/voting status and newly indexed records. Redis failures fall back to PostgreSQL; Redis reconnects automatically. Simultaneous cache misses can still query the database independently.
+
+For local development, start Redis and use `REDIS_URL=redis://localhost:6379/0`:
+
+```bash
+docker run --rm --name poidh-redis -p 127.0.0.1:6379:6379 redis:7-alpine redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+```
+
+Use a private, authenticated Redis service in production (`rediss://` for TLS), with a memory limit and eviction policy. Use a separate Redis database/instance for each environment; entries use the `poidh:rest-api:v1:` prefix.
 
 ## Database permissions
 
@@ -90,6 +105,6 @@ Deploy this directory as an independent service:
 - Install: `pnpm install --frozen-lockfile`
 - Start: `pnpm start`
 - Health check: `/ready`
-- Set `DATABASE_URL` and `PORT`
+- Set `DATABASE_URL`, `PORT`, and `REDIS_URL` to enable caching
 
 No RPC or indexer runtime credentials are required.

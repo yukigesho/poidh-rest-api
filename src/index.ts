@@ -1,5 +1,6 @@
 import { serve } from "@hono/node-server";
 import app from "./api/index.js";
+import { redisClient } from "./cache.js";
 import { databaseClient } from "./db/index.js";
 import { env } from "./env.js";
 
@@ -15,6 +16,7 @@ process.stdout.write(
 const shutdown = (signal: string) => {
   process.stdout.write(`${signal} received, shutting down\n`);
   server.close(() => {
+    redisClient?.disconnect();
     void databaseClient.end({ timeout: 5 }).finally(() => process.exit(0));
   });
 };

@@ -16,5 +16,6 @@ if (!Number.isInteger(port) || port < 1 || port > 65_535) {
 
 export const env = {
   DATABASE_URL: databaseUrl,
+  REDIS_URL: process.env.REDIS_URL,
   PORT: port,
 };

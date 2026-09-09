@@ -2,8 +2,10 @@ import { swaggerUI } from "@hono/swagger-ui";
 import { and, asc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { cache } from "../cache.js";
 import { checkDatabaseConnection, db } from "../db/index.js";
 import { bounties, claims, participationsBounties } from "../db/schema.js";
+import { responseCache } from "./cache.js";
 import { json } from "./http.js";
 import { openAPI } from "./openAPI.js";
 import bountiesApi from "./routes/bounties.js";
@@ -12,6 +14,20 @@ import dataApi from "./routes/data.js";
 import usersApi from "./routes/users.js";
 
 const app = new Hono();
+
+if (cache) {
+  const middleware = responseCache(cache);
+  for (const path of [
+    "/api/v1/*",
+    "/bounty/*",
+    "/claim/*",
+    "/live/*",
+    "/voting/*",
+    "/past/*",
+  ]) {
+    app.use(path, middleware);
+  }
+}
 
 const parseIntegerParam = (value: string) => {
   const parsed = Number(value);
