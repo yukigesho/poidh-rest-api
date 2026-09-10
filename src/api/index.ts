@@ -1,3 +1,4 @@
+import { inspect } from "node:util";
 import { swaggerUI } from "@hono/swagger-ui";
 import { and, asc, eq } from "drizzle-orm";
 import { Hono } from "hono";
@@ -209,7 +210,8 @@ app.onError((error, c) => {
   if (error instanceof HTTPException) {
     return c.json({ error: error.message }, error.status);
   }
-  process.stderr.write(`${error.stack ?? error.message}\n`);
+  // Drizzle wraps the database error in `cause`, which error.stack omits.
+  process.stderr.write(`${inspect(error, { depth: 5, colors: false })}\n`);
   return c.json({ error: "Internal server error" }, 500);
 });
 
