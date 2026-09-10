@@ -31,9 +31,11 @@ Run `pnpm typecheck` to check TypeScript and `pnpm test` to run cache tests.
 
 ## Redis cache
 
-Set `REDIS_URL` to enable server-side caching of successful JSON GET responses on all data endpoints, including legacy routes. Each full request URL (including filters, pagination, and relations) has a separate cache entry with a fixed **24-hour TTL (86,400 seconds)**. Cache hits do not extend the TTL or query PostgreSQL. Errors, health/readiness checks, and API documentation are not cached.
+Set `REDIS_URL` to enable server-side caching of successful JSON GET responses on all data endpoints, including legacy routes. Each full request URL (including filters, pagination, and relations) has a separate cache entry with a fixed **10-second TTL**. Cache hits do not extend the TTL or query PostgreSQL. Errors, health/readiness checks, and API documentation are not cached.
 
-Data can be up to 24 hours stale, including live/voting status and newly indexed records. Redis failures fall back to PostgreSQL; Redis reconnects automatically. Simultaneous cache misses can still query the database independently.
+Caching adds up to 10 seconds of staleness after a database response is generated; indexing lag and replica lag are separate. Responses passing through the cache middleware include `Cache-Control: no-store` to prevent additional browser/CDN caching and `X-Cache: HIT`, `MISS`, or `BYPASS` (Redis error). Redis failures fall back to PostgreSQL; Redis reconnects automatically. Simultaneous cache misses can still query the database independently.
+
+This release rotates the namespace to `v2`, so existing 24-hour `v1` entries are ignored immediately by updated API instances and expire naturally. Deploy all API replicas to stop serving the old policy. **Do not flush shared Redis**: eRPC uses it too. No indexer restart or cache purge is needed.
 
 For local development, start Redis and use `REDIS_URL=redis://localhost:6379/0`:
 
@@ -41,7 +43,7 @@ For local development, start Redis and use `REDIS_URL=redis://localhost:6379/0`:
 docker run --rm --name poidh-redis -p 127.0.0.1:6379:6379 redis:7-alpine redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
 ```
 
-Use a private, authenticated Redis service in production (`rediss://` for TLS), with a memory limit and eviction policy. Use a separate Redis database/instance for each environment; entries use the `poidh:rest-api:v1:` prefix.
+Use a private, authenticated Redis service in production (`rediss://` for TLS), with a memory limit and eviction policy. Use a separate Redis database/instance for each environment; entries use the `poidh:rest-api:v2:` prefix.
 
 ## Database permissions
 
